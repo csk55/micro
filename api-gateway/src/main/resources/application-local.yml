@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: product-service
+          uri: http://product-service:8082  # Use the container name as the hostname
+          #uri: http://localhost:8082
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - RewritePath=/api/products/(?<segment>.*), /api/products/${segment}
+
+        - id: order-service
+          uri: lb://order-service  # Load-balanced Eureka service name
+          #uri: http://order-service.default.svc.cluster.local:8081
+          #uri: http://order-service:8081  # Use the container name as the hostname
+          #uri: http://host.docker.internal:8081
+          #uri: http://localhost:8081
+          predicates:
+            - Path=/api/orders/**
+
+server:
+  port: 8080
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://service-registry:8761/eureka/
+    registryFetchIntervalSeconds: 5
+  instance:
+    leaseRenewalIntervalInSeconds: 5
+    leaseExpirationDurationInSeconds: 10
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: DEBUG

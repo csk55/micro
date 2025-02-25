@@ -1,0 +1,14 @@
+# Use a lightweight JDK image
+FROM eclipse-temurin:23-jdk
+
+# Set the working directory inside the container
+WORKDIR /product-service
+
+# Copy the JAR file (adjust based on your build tool)
+COPY target/*.jar product-service.jar
+
+# Expose the application's port
+EXPOSE 8082
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "product-service.jar"]

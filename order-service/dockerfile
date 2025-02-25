@@ -1,0 +1,14 @@
+# Use a lightweight JDK image
+FROM eclipse-temurin:23-jdk
+
+# Set the working directory inside the container
+WORKDIR /order-service
+
+# Copy the JAR file (adjust based on your build tool)
+COPY target/*.jar order-service.jar
+
+# Expose the application's port
+EXPOSE 8081
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "order-service.jar"]

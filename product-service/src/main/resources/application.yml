@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: product-service
+  profiles:
+    active: prod
+  config:
+    import: optional:configserver
+
+server:
+  port: 8082
+
+eureka:
+  client:
+    registryFetchIntervalSeconds: 5
+  instance:
+    leaseRenewalIntervalInSeconds: 5
+    leaseExpirationDurationInSeconds: 10

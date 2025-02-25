@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: order-service
+  profiles:
+    active: pro
+  config:
+    import: optional:configserver
+
+server:
+  port: 8081
+
+eureka:
+  client:
+    registryFetchIntervalSeconds: 5
+  instance:
+    leaseRenewalIntervalInSeconds: 5
+    leaseExpirationDurationInSeconds: 10
