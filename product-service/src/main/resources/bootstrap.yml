@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: product-service
+  config:
+    import: "optional:configserver:http://config-server:8888"
+  cloud:
+    config:
+      fail-fast: true
+      retry:
+        initial-interval: 1500
+        multiplier: 1.5
+        max-interval: 5000
+        max-attempts: 8
+  profiles:
+    active: local  # Use 'local' profile to match your Git configuration
+

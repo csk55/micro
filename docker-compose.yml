@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  config-server:
+    image: config-server:latest
+    build:
+      context: ./config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=git
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8888/actuator/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
   service-registry:
     image: service-registry:latest
     build:
@@ -8,10 +25,16 @@ services:
     container_name: service-registry
     ports:
       - "8761:8761"
+    depends_on:
+      config-server:
+        condition: service_healthy
     networks:
       - app-network
     environment:
-      - SPRING_PROFILES_ACTIVE=local  # Set local profile
+#      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_INSTANCE_HOSTNAME=service-registry
+#      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
+#      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
 
   api-gateway:
     image: api-gateway:latest  # Name of the image
@@ -19,40 +42,149 @@ services:
       context: ./api-gateway  # Directory containing Dockerfile for api-gateway
     container_name: api-gateway
     ports:
-      - "8080:8080"  # Map container port to localhost
+      - "8080:8080"
+      - "5005:5005"  # Expose debug port
+    volumes:
+#      - C:\csk\repo\logs:/logs
+      - C:/csk/repo/logs:/logs
+#      - ./logs:/var/log
+#      - /c/csk/repo/logs:/logs
     depends_on:
+      - config-server
       - service-registry
     networks:
       - app-network
     environment:
       - SPRING_PROFILES_ACTIVE=local
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/  # Ensures Eureka uses container name
+      - LOG_PATH=/logs/api-gateway.log
+#      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005  
+  #      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+#      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/  # Ensures Eureka uses container name
 
   product-service:
     image: product-service:latest
     build:
       context: ./product-service  # Directory containing Dockerfile for product-service
+    container_name: product-service
     ports:
       - "8082:8082"
+    volumes:
+      - C:/csk/repo/logs:/logs
+    depends_on:
+      - config-server
+      - service-registry
     networks:
       - app-network
     environment:
       - SPRING_PROFILES_ACTIVE=local
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/  # Ensures Eureka uses container name
+      - LOG_PATH=/logs/product-service.log
+#      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+#      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/  # Ensures Eureka uses container name
 
   order-service:
     image: order-service:latest
     build:
       context: ./order-service  # Directory containing Dockerfile for order-service
+    container_name: order-service
     ports:
       - "8081:8081"
     depends_on:
       - product-service
+      - config-server
+      - service-registry
     networks:
       - app-network
     environment:
       - SPRING_PROFILES_ACTIVE=local
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/  # Ensures Eureka uses container name
+#      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+#      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/  # Ensures Eureka uses container name
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.7.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_USERNAME=elastic
+      - ELASTIC_PASSWORD=elastic
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    networks:
+      - app-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.7.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - app-network
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.7.0
+    container_name: filebeat
+    user: root
+    volumes:
+      - C:/csk/repo/logs:/logs:ro
+      - C:/csk/repo/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+    command: filebeat -e -strict.perms=false
+    depends_on:
+      - elasticsearch
+    networks:
+      - app-network
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - app-network
+    depends_on:
+      - otel-collector
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - app-network
+    depends_on:
+      - prometheus
+      - jaeger
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: otel-collector
+    volumes:
+      - ./otel-config.yml:/etc/otel/config.yaml
+    command: [ "--config", "/etc/otel/config.yaml" ]
+    ports:
+      - "4317:4317"  # OTLP gRPC
+      - "4318:4318"  # OTLP HTTP
+      - "9464:9464"  # Prometheus metrics
+    networks:
+      - app-network
+    depends_on:
+      - jaeger
+
+  # Jaeger for Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # Collector HTTP API
+      - "14250:14250"  # OTLP
+    networks:
+      - app-network
 
 networks:
   app-network:

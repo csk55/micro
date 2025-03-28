@@ -13,11 +13,12 @@ public class ProductClient {
         this.webClient = webClientBuilder.baseUrl(productServiceUrl).build();
     }
 
-    public String getProductInfo(String productId) {
+    public String getProduct(String productId, String traceId) {
         System.out.println("Calling Product Service at----------: " + productServiceUrl);
 
         return webClient.get()
                 .uri("/{productId}", productId)
+                .header("X-Trace-Id", traceId) // ✅ Pass traceId in headers
                 .retrieve()
                 .bodyToMono(String.class)
                 .block(); // Blocking call, for simplicity

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - traceId=%X{traceId} %msg%n%throwable"/>
+
+    <!-- Console appender -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <ProductServiceApplicationencoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </ProductServiceApplicationencoder>
+    </appender>
+
+    <!-- File appender (optional) -->
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>C:/csk/repo/logs/api-gateway.log</file>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Log level configuration -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

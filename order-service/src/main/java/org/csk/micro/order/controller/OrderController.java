@@ -1,5 +1,6 @@
 package org.csk.micro.order.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.csk.micro.order.client.ProductClient;
 import org.csk.micro.order.service.OrderService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,7 +18,8 @@ public class OrderController {
     }
 
     @GetMapping("/{productId}")
-    public String placeOrder(@PathVariable String productId) {
-        return orderService.processOrder(productId);
-    }
+    public String placeOrder(@PathVariable String productId, HttpServletRequest request) {
+
+        String traceId = request.getHeader("X-Trace-Id");
+        return orderService.processOrder(productId, traceId);    }
 }
