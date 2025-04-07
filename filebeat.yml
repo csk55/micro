@@ -1,0 +1,25 @@
+filebeat.config.strict.perms: false
+
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - "/logs/*.log"
+    fields:
+      app: microservices
+    multiline:
+      pattern: '^\d{4}-\d{2}-\d{2}'
+      negate: true
+      match: after
+
+setup.template.name: "microservices"
+setup.template.pattern: "microservices-*"
+setup.ilm.enabled: false
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  username: "elastic"
+  password: "elastic"
+  index: "microservices-logs-%{+yyyy.MM.dd}"
+
+logging.level: info
